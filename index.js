@@ -49,17 +49,17 @@ function get(zipCode) {
     }
     deferred.resolve(data);
   });
-  
+
   return deferred.promise;
 }
-if (process.argv[2]) {
-  get(process.argv[2])
-  .then(function (data) {
-    console.log(data);
-  }).fail(function(err) {
-      console.log(err);
-      return;
-  });
-}
+// if (process.argv[2]) {
+//   get(process.argv[2])
+//   .then(function (data) {
+//     console.log(data);
+//   }).fail(function(err) {
+//       console.log(err);
+//       return;
+//   });
+// }
 
 exports.get = get;
