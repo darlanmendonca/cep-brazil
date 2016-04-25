@@ -5,22 +5,19 @@ Get zip-code info
 ## Usage
 
 ``` js
-var cep = require('cep-brazil');
-cep.get('04193020')
-  .then(function (data) {
-    console.log(data);
-    /*
-      { street: 'Rua Doutor Benedito Tolosa',
-        district: 'Parque Bristol',
-        city: 'São Paulo',
-        state: 'SP',
-        zipCode: '04193020' 
-      }
+var zipcode = require('cep-brazil');
 
-    */
-  }).fail(function(err) {
-      console.log(err);
-      return;
-  });
+zipcode
+  .get('04193020')
+  .then(showAddress)
+  .catch(exceptionError);
+
+function showAddress(address) {
+  console.log(address);
+}
+
+function exceptionError(err) {
+  console.log(err)
+}
 
 ```
