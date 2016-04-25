@@ -1,54 +1,92 @@
-var url = 'http://m.correios.com.br/movel/buscaCepConfirma.do';
-var request = require('request');
-var cheerio = require('cheerio');
-var Q = require('q');
+'use strict';
 
-function get(zipCode) {
-  var deferred = Q.defer();
-  zipCode = String(zipCode);
-  if (zipCode.length !== 8) {
-    deferred.reject({error: true, errorMsg: 'Zipcode must be a string with 8 characters!'});
+exports.search = search;
+
+function search(zipcode) {
+  let request = require('request');
+  let deferred = require('q').defer();
+  let zipcodeReg = /^[\d]{8}$/;
+  let zipcodeValid = zipcodeValid.test(zipcode);
+
+  if (!zipcodeValid) {
+    let error = new Error('Zipcode must be a string with 8 characters!');
+    deferred.reject(error);
     return;
   }
-  var form = { metodo: 'buscarCep', cepEntrada: zipCode};
-  request.post({url: url, form: form, encoding: 'binary'}, function (err, response, body) {
-    if (err || (response && response.statusCode > 300)) {
-      deferred.reject({error: true, errorMsg: response ? response.body : err});
-      return;
-    }
-    var $ = cheerio.load(body.replace(/\r?\n/g, ""), {
+
+  let url = 'http://m.correios.com.br/movel/buscaCepConfirma.do';
+  let encoding = 'binary';
+  var form = {
+    metodo: 'buscarCep',
+    cepEntrada: zipcode
+  };
+
+  request
+    .post({url, form, encoding})
+    .then(crawler)
+    .then(resolve)
+    .catch(exceptionError);
+
+  function exceptionError(err) {
+    deferred.reject(err);
+  }
+
+  function crawler(response, body) {
+    let cheerio = require('cheerio');
+    let options = {
       normalizeWhitespace: false,
       xmlMode: false,
       decodeEntities: true
-    });
-    if ($('.erro').length > 0) {
-      deferred.reject({error: true, errorMsg: $('.erro').text().trim()});
+    };
+
+    let breakLines = /\r?\n/g;
+    var $ = cheerio.load(body.replace(breakLines, ''), options);
+
+    if ($('.erro').length) {
+      let error = new Error($('.erro').text().trim());
+      deferred.reject(error);
       return;
     }
     var resp = $('.caixacampobranco .respostadestaque');
     if (resp.length === 0) {
-      deferred.reject({error: true, errorMsg: 'Response error'});
+      let error = new Error('Response error')
+      deferred.reject(error);
       return;
     }
-    var data = {};
-    if (resp.length == 2) {
-       data = {
-        "city": $(resp[0]).text().split('\t/')[0].trim(),
-        "state": $(resp[0]).text().split('\t/')[1].trim(),
-        "zipCode": $(resp[1]).text().trim()
-      };
 
+
+    let address;
+    if (resp.length == 2) {
+      let city = $(resp[0]).text().split('\t/')[0].trim();
+      let state = $(resp[0]).text().split('\t/')[1].trim();
+      let zipcode = $(resp[1]).text().trim();
+
+      address = {
+        city,
+        state,
+        zipcode
+      };
     } else {
-       data = {
-        "street": $(resp[0]).text().trim(),
-        "district": $(resp[1]).text().trim(),
-        "city": $(resp[2]).text().split('/')[0].trim(),
-        "state": $(resp[2]).text().split('/')[1].trim(),
-        "zipCode": $(resp[3]).text().trim()
+      let street = $(resp[0]).text().trim();
+      let district = $(resp[1]).text().trim();
+      let city = $(resp[2]).text().split('/')[0].trim();
+      let state = $(resp[2]).text().split('/')[1].trim();
+      let zipcode = $(resp[3]).text().trim();
+
+      address = {
+        street,
+        district,
+        city,
+        state,
+        zipcode
       };
     }
-    deferred.resolve(data);
-  });
+    return address;
+  }
+
+  function resolve(address) {
+    deferred.resolve(address);
+  }
 
   return deferred.promise;
 }
@@ -61,5 +99,3 @@ function get(zipCode) {
 //       return;
 //   });
 // }
-
-exports.get = get;
